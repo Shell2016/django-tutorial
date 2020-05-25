@@ -18,7 +18,11 @@ class IndexView(generic.ListView):
     context_object_name = 'latest_question_list'
 
     def get_queryset(self):
-        return Question.objects.filter(pub_date__lte=timezone.now()).order_by('-pub_date')[:5]
+        # Возвращаем query set вопросов отсортированных по дате(5) и не с будующей датой создания
+        question_list = Question.objects.filter(
+            pub_date__lte=timezone.now()).order_by('-pub_date')[:5]
+        # выводим вопросы только с choice'ами
+        return [question for question in question_list if question.choice_set.all()]
 
 
 # def detail(request, question_id):

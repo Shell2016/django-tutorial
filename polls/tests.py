@@ -47,6 +47,15 @@ def create_question(question_text, days):
     return Question.objects.create(question_text=question_text, pub_date=time)
 
 
+def create_question_with_choices(question_text, days):
+    time = timezone.now() + datetime.timedelta(days=days)
+    q = Question.objects.create(
+        question_text=question_text, pub_date=time)
+    q.choice_set.create(choice_text='Choice1')
+    q.choice_set.create(choice_text='Choice2')
+    return q
+
+
 class QuestionIndexViewTests(TestCase):
 
     def test_no_questions(self):
@@ -55,31 +64,50 @@ class QuestionIndexViewTests(TestCase):
         self.assertContains(response, "No polls are available.")
         self.assertQuerysetEqual(response.context['latest_question_list'], [])
 
-    def test_past_question(self):
-        create_question('Past question', -30)
-        response = self.client.get(reverse('polls:index'))
-        self.assertQuerysetEqual(response.context['latest_question_list'], [
-                                 '<Question: Past question>'])
-
     def test_future_question(self):
         create_question('Future question', 30)
         response = self.client.get(reverse('polls:index'))
         self.assertContains(response, "No polls are available.")
         self.assertQuerysetEqual(response.context['latest_question_list'], [])
 
-    def test_future_question_and_past_question(self):
-        create_question('Past question', -30)
-        create_question('Future question', 30)
+    def test_future_question_and_past_question_with_choices(self):
+        create_question_with_choices('Past question with choices', -30)
+        create_question_with_choices('Future question with choices', 30)
         response = self.client.get(reverse('polls:index'))
         self.assertQuerysetEqual(response.context['latest_question_list'], [
-                                 '<Question: Past question>'])
+                                 '<Question: Past question with choices>'])
 
-    def test_two_past_question(self):
-        create_question('Past question1', -30)
-        create_question('Past question2', -20)
+    def test_past_question_without_choices(self):
+        create_question('Past question without choices', -1)
+        response = self.client.get(reverse('polls:index'))
+        self.assertQuerysetEqual(response.context['latest_question_list'], [])
+
+    def test_past_question_with_choices(self):
+        create_question_with_choices('Past question with choices', -1)
         response = self.client.get(reverse('polls:index'))
         self.assertQuerysetEqual(response.context['latest_question_list'], [
-                                 '<Question: Past question2>', '<Question: Past question1>'])
+                                 '<Question: Past question with choices>'])
+
+    def test_two_past_question_without_choices(self):
+        create_question('Past question without choices 1', -30)
+        create_question('Past question without choices 2', -20)
+        response = self.client.get(reverse('polls:index'))
+        self.assertQuerysetEqual(response.context['latest_question_list'], [])
+
+    def test_two_past_questions_with_and_without_choices(self):
+        create_question('Past question without choices', -1)
+        create_question_with_choices('Past question with choices', -1)
+        response = self.client.get(reverse('polls:index'))
+        self.assertQuerysetEqual(response.context['latest_question_list'], [
+                                 '<Question: Past question with choices>'])
+
+    def test_two_past_questions_with_choices(self):
+        create_question_with_choices('Past question with choices1', -2)
+        create_question_with_choices('Past question with choices2', -1)
+        response = self.client.get(reverse('polls:index'))
+        self.assertQuerysetEqual(response.context['latest_question_list'], [
+                                 '<Question: Past question with choices2>',
+                                 '<Question: Past question with choices1>'])
 
 
 class QuestionDetailViewTests(TestCase):
